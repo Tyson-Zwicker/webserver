@@ -1,0 +1,87 @@
+Steps the service goes through and formats used:
+
+1.Receive from browser;
+
+GET /:xhttptest
+
+2. Server starts a worker - includes the request's URL as argv[2]
+    -argv[1] is  the exectable path.. which is used prefices the /service or /content folder.
+3. Server sends worker it's PID
+4. Server sends worker it's Request Method
+    -This triggers the worker to start processing the request.
+5. if the request is a GET goto step 6
+    -otherwise is doesn't do anything.
+6. if the "resource" (the URL after the minus the IP:PORT section)
+   -begins with /:
+        -This is a service
+    -otherwise its assumed to be a file.
+7. The ServiceName becomes the resource:
+    a. stripped of the initial /:
+    b. preficed with a new '/'
+    c. .js is appended to the end (all services must be a javascript program)
+8. runService (pathName, serviceName) is called.
+9. if the javascript program exists..
+    -If it does not, a 404 error is returned, and the returnData is a 404 **HTML**.
+10. A child process if forked to run the javascript program.  Includes requests URL as argv[2]
+11.The child process is sent its PID.
+    -This should trigger the Service to RUN.
+
+**This part is the responsibility of the javascript program being run as the service.
+
+        //This the basics for a service. 
+        const child_process = require('child_process');
+        let pid = -1;
+
+        process.on('message', (message) => {
+            msg = message + '';
+            if (msg === 'SIGINT') {
+                terminate();
+            }
+
+            if (msg.indexOf('PID') === 0) {
+                pid = msg.substring(msg.substring(3));
+                
+                /*
+                THIS IS WHERE YOUR SERVICE CODE GOES
+                */
+                
+                returnService ('[Data returned from service]');
+            }
+        });
+        function returnService(data) {
+            let returnCode = 200;
+            let result = {
+                data: data,
+                pid: pid
+            };
+            process.send(JSON.stringify(result));
+        }
+        function terminate() {
+            process.exit(0);
+        }
+
+
+**This is back in the Worker:
+
+12. The returned serviceResponse is parsed to JSON..
+    -The JSON object should contain a "pid" and "data" field.
+13. The Worker sends (to the Server) a JSON file:
+    -data: the serviceResponse.data
+    -pid: the *Worker's own PID* (not the service's)
+    -code: HTTP return code (200 if all goes well)
+    -mime: 'application/JSON'
+14. The Worker kills the child process that ran the service (using serviceResponse.pid)
+15. The Workers sends the server:
+    -data : the stuff to give the web browser
+    -mime : the mime type so the browser knows what to do with it.
+    -code : the HTTP Code (200,404 or 500)
+    -pid : The *Worker's" pid.
+15. The Server returns the HTTPResponse to the browser
+    -code, Mime in headers and the "stuff" as the response data.
+16. The Server kills the Worker using the PID the worker returned.
+
+** On the Browser
+
+17. TODO:  Treat this like text not HTML, parse the JSON, do things..
+
+    

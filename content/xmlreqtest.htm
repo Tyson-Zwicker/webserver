@@ -1,0 +1,28 @@
+<html>
+
+<head>
+    <title> XML HTTP request test page</title>
+</head>
+
+<body>
+    <p>
+        This page should respond to pressing of the button
+        by changing the text that says "change me" to
+        "success!"
+    </p>
+    <button type="button" onclick="clicked()">PRESS ME</button>
+    <div id="the_div">change me</div>
+    <script>
+        function clicked() {
+            let xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function(){
+                if (this.readyState ==4 && this.status == 200){
+                    document.getElementById ('the_div').innerHTML = xhttp.responseText;
+                }
+            };
+            xhttp.open('GET',':xmlrequesttest');
+            xhttp.send();
+        }
+    </script>
+</body>
+</html>
