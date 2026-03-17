@@ -1,23 +1,23 @@
 const child_process = require('child_process');
-let pid = -1;
+let spid = -1;
 
 process.on('message', (message) => {
     msg = message + '';
     if (msg === 'SIGINT') {
         terminate();
     }
-    console.log ('XMLREQUEST RECIEVED: '+msg);
+    
     if (msg.indexOf('PID') === 0) {
-        pid = msg.substring(3);
-        console.log ('PID SECTION READ AS:['+pid+']');
+        spid = msg.substring(3);
+        console.log ('SERVICE recieved SPID:['+spid+']');
         returnService ('[Data returned from service]');
     }
 });
 function returnService(data) {
-    let returnCode = 200;
+    let returnCode = 200;    
     let result = {
         data: data,
-        pid: pid,
+        spid: spid,
         returnCode: returnCode
     };
     process.send(JSON.stringify(result));
