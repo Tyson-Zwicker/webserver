@@ -1,26 +1,24 @@
 const fs = require('fs');
 const child_process = require('child_process');
-let pid = -1;
+
 let verbose = 0;
 process.on('message', (message) => {
   let msg = message + '';
-  if (msg === 'SIGINT') {
-    if (verbose==1) console.log('TERMINATE||' + pid);
+  if (msg === 'SIGINT') {    
     terminate();
   }
   let resource = process.argv[2];
-  let verbose = parseInt(process.argv[3]);
+  verbose = parseInt(process.argv[3]);
   let body = process.argv[4];
 
   if (msg === 'GET') {
     if (resource.startsWith('/:')) {
       let pathName = process.argv[1].substring(0, process.argv[1].lastIndexOf('/')) + '/services';
       let serviceName = '/' + resource.substring(2) + '.js';
-      if (verbose == 1) console.log(msg + '||<service>||' + pathName + '||' + serviceName);
+      if (verbose == 1) console.log('service-> ' + serviceName);
       runService(pathName, serviceName);
     } else {
-      let pathName = process.argv[1].substring(0, process.argv[1].lastIndexOf('/')) + '/content';
-      if (verbose == 1) console.log(msg + '||' + pathName + '||' + resource);
+      let pathName = process.argv[1].substring(0, process.argv[1].lastIndexOf('/')) + '/content';      
       getFile(pathName, resource);
     }
   }
@@ -28,13 +26,9 @@ process.on('message', (message) => {
     if (resource.startsWith('/:')) {
       let pathName = process.argv[1].substring(0, process.argv[1].lastIndexOf('/')) + '/services';
       let serviceName = '/' + resource.substring(2) + '.js';
-      if (verbose == 1) console.log(msg + '||<service>||' + pathName + '||' + serviceName);
+      if (verbose == 1) console.log('service-> ' + serviceName);
       runService(pathName, serviceName, body);
     }
-  }
-  if (msg.indexOf('PID') === 0) {    
-    pid = msg.substring(3);
-    if (verbose == 1) console.log('PID #' + pid);
   }
 });
 
@@ -42,25 +36,23 @@ function runService(pathName, serviceName, body) {
   let returnData;
   let returnCode = 200;
   try {
-    if (fs.existsSync(pathName + serviceName)) {
-      if (verbose == 1) console.log('SERVICE||' + pathName + '||' + serviceName + '||' + serviceName.url);
+    if (fs.existsSync(pathName + serviceName)) {      
       var serviceWorker = child_process.fork(pathName + serviceName, [serviceName.url]);
       if (body) serviceWorker.send("BODY" + body);
-      serviceWorker.send("PID" + serviceWorker.pid);
+      serviceWorker.send("RUN");
       serviceWorker.on('message', (serviceResponse) => {
         let sr = JSON.parse(serviceResponse);
         let result = {
           "data": sr.data,
           "mime": 'application/JSON',
-          "code": sr.returnCode,
-          "pid": sr.pid
+          "code": sr.returnCode,          
         };
         let json = JSON.stringify(result);
         process.send(json);        
         try{          
           process.kill(parseInt(serviceWorker.pid)); //Make sure the process is dead.
         }
-        catch (err){console.log ('WORKER could not kill service process '+sr.spid);} //Process was already dead.
+        catch (err){console.log ('WORKER could not kill service process '+serviceWorker.pid);} //Process was already dead.
       });
     } else {
       if (verbose == 1) console.log('Service Error (404)||' + serviceName);
@@ -80,8 +72,7 @@ function getFile(pathName, fileName) {
   let returnCode = 200;
   let mimeType = getMimeType(fileName);
   try {
-    returnData = fs.readFileSync(pathName + fileName).toString();
-    if (verbose == 1) console.log('200');
+    returnData = fs.readFileSync(pathName + fileName).toString();    
   } catch (err) {
     if (err.message.startsWith('ENOENT')) {
       if (verbose == 1) console.log('404||' + pathName + '||' + fileName);
@@ -99,7 +90,6 @@ function getFile(pathName, fileName) {
     "data": returnData,
     "mime": mimeType,
     "code": returnCode,
-    "pid": pid
   };
   let json = JSON.stringify(result);
   process.send(json);

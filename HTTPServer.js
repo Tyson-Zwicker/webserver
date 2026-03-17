@@ -17,7 +17,6 @@ function listener(req, res) {
   }
   if (req.method === 'POST') {
     let body = '';
-
     // Listen for data chunks
     req.on('data', (chunk) => {
       body += chunk.toString(); // Convert Buffer to string
@@ -32,9 +31,9 @@ function listener(req, res) {
 function invokeWorker(req,res,body) {
   
   if (!body) body='';
-  let workerVerbosity ='2';
+  let workerVerbosity ='1';
   var worker = child_process.fork(__dirname + '/HTTPWorker.js', [req.url, workerVerbosity,body]);
-  worker.send("PID" + worker.pid);
+  
   worker.send(req.method);
   worker.on('message',
     (message) => {
@@ -46,7 +45,7 @@ function invokeWorker(req,res,body) {
       
       try{        
         process.kill(parseInt(worker.pid));
-      }catch (err){console.log ('SERVER could not kill worker process: '+msg.pid);} //Process was already dead.
+      }catch (err){console.log ('SERVER could not kill worker process: '+worker.pid);}
     }
   );
 }
