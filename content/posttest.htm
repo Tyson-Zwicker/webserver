@@ -1,0 +1,27 @@
+<html>
+
+<head>
+  <title> XML HTTP request test page</title>
+</head>
+
+<body>
+  <p>
+    This will send a POST to the server when button is pressed (for testing)
+  </p>
+  <button type="button" onclick="clicked()">PRESS ME</button>
+  <div id="the_div">change me</div>
+  <script>
+    function clicked() {
+      let xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function () {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById('the_div').innerHTML = xhttp.responseText;
+        }
+      };
+      xhttp.open('POST', ':posttest');
+      xhttp.send('THIS_IS_DATA');
+    }
+  </script>
+</body>
+
+</html>
