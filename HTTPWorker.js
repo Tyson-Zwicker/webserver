@@ -5,18 +5,17 @@ let verbose = 0;
 process.on('message', (message) => {
   let msg = message + '';
   if (msg === 'SIGINT') {
-    console.log('TERMINATE||' + pid);
+    if (verbose==1) console.log('TERMINATE||' + pid);
     terminate();
   }
   let resource = process.argv[2];
   let verbose = parseInt(process.argv[3]);
+  let body = process.argv[4];
+
   if (msg === 'GET') {
     if (resource.startsWith('/:')) {
       let pathName = process.argv[1].substring(0, process.argv[1].lastIndexOf('/')) + '/services';
-            
       let serviceName = '/' + resource.substring(2) + '.js';
-
-
       if (verbose == 1) console.log(msg + '||<service>||' + pathName + '||' + serviceName);
       runService(pathName, serviceName);
     } else {
@@ -25,28 +24,30 @@ process.on('message', (message) => {
       getFile(pathName, resource);
     }
   }
-  if (msg === 'POST'){
-    console.log ('POST');
-    console.log (msg);
+  if (msg === 'POST') {
+    if (resource.startsWith('/:')) {
+      let pathName = process.argv[1].substring(0, process.argv[1].lastIndexOf('/')) + '/services';
+      let serviceName = '/' + resource.substring(2) + '.js';
+      if (verbose == 1) console.log(msg + '||<service>||' + pathName + '||' + serviceName);
+      runService(pathName, serviceName, body);
+    }
   }
-  if (msg.indexOf('PID') === 0) {
-    console.log ('recieved PID message:'+msg);
+  if (msg.indexOf('PID') === 0) {    
     pid = msg.substring(3);
     if (verbose == 1) console.log('PID #' + pid);
   }
 });
-function runService(pathName, serviceName) {
+
+function runService(pathName, serviceName, body) {
   let returnData;
   let returnCode = 200;
   try {
-    //TODO: The "serviceName" cannot simply have .js stuck on its ass because the url might have
-    //contained additional information which isn't part of its filename...
     if (fs.existsSync(pathName + serviceName)) {
       if (verbose == 1) console.log('SERVICE||' + pathName + '||' + serviceName + '||' + serviceName.url);
       var serviceWorker = child_process.fork(pathName + serviceName, [serviceName.url]);
-    
+      if (body) serviceWorker.send("BODY" + body);
       serviceWorker.send("PID" + serviceWorker.pid);
-      serviceWorker.on('message', (serviceResponse) => {        
+      serviceWorker.on('message', (serviceResponse) => {
         let sr = JSON.parse(serviceResponse);
         let result = {
           "data": sr.data,
@@ -55,10 +56,11 @@ function runService(pathName, serviceName) {
           "pid": sr.pid
         };
         let json = JSON.stringify(result);
-        process.send(json);
-        console.log ('service response:');
-        console.log (sr);
-        process.kill(parseInt(sr.pid));
+        process.send(json);        
+        try{          
+          process.kill(parseInt(serviceWorker.pid)); //Make sure the process is dead.
+        }
+        catch (err){console.log ('WORKER could not kill service process '+sr.spid);} //Process was already dead.
       });
     } else {
       if (verbose == 1) console.log('Service Error (404)||' + serviceName);
