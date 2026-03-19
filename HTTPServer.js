@@ -14,8 +14,8 @@ function listener(req, res) {
   let visitorsIP = ((req.headers['x-forwarded-for']?.split(',')[0].trim()) || req.socket.remoteAddress).substring(7);
   if (verbose) {    
     const now = new Date();
-    const stamp = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
-    console.log(stamp + '@' + visitorsIP + ' ' + req.url);
+    const stamp = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+    console.log(stamp + ' ' + visitorsIP + ' '+req.method+' ' + req.url);
   }
   if (req.method === 'GET') {
     invokeWorker(req, res, '',visitorsIP);

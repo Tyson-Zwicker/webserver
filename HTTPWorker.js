@@ -1,22 +1,37 @@
 const fs = require('fs');
 const child_process = require('child_process');
 
+const badURLs = [
+  'Autodiscover',
+  'geoserver',
+  'vendor/phpunit/',
+  'securityRealm/user/admin/search',
+  'login',
+  'bins',
+  'backup',
+  '?XDEBUG_SESSION_START',
+  'console',
+  '_ignition/execute-solution',
+  'actuator/gateway/routes',
+  '..%2F..%2F..%2F..%2F..%2F..%2Fetc%2Fpasswd',
+  'currentsettings.htm',
+  'http://ip-api.com/json/',
+  'manager/text/list'
+]
 let verbose = 0;
 process.on('message', (message) => {
   let msg = message + '';
   if (msg === 'SIGINT') {
     terminate();
   }
-  let resource = process.argv[2];
+  let resource =decodeURIComponent (process.argv[2]);
   verbose = parseInt(process.argv[3]);
   let body = process.argv[4];
+  //TODO: USE FOR SPAMMERS
   let visitorIP = process.argv[5];
 
   let fullPath = process.argv[1].substring(0, process.argv[1].lastIndexOf('/'));
-  let startPath = process.argv[1].substring (0, process.argv[1].indexOf('/'));
-  console.log('DEBUG FULL Path: ' + fullPath);
-  console.log('DEBUG START Path: '+ startPath);
-  console.log('DEBUG Natural Resource: ' + resource);
+  let startPath = process.argv[1].substring(0, process.argv[1].indexOf('/'));
 
   if (msg === 'GET') {
     if (resource.startsWith('/:')) {
@@ -25,28 +40,16 @@ process.on('message', (message) => {
       if (verbose == 1) console.log('service-> ' + serviceName);
       runService(pathName, serviceName, 'GET');
     } else {
-      //--------------                        Special cases...                        ---This is where I fuck around with "hackers"..
-      if (fullPath === '/') {
-        getIndexPage();
-      }
-      //TODO: Review logs, and make a put all the script kiddies something do based on the startpath/resource they ask for...
-
-     /* else if (naturalPathName.startsWith === '/login') {
-        //Run a service for those who wish to login.
-        let serviceName = '/login.js';
-        if (verbose == 1) console.log('*service-> ' + serviceName);
-        runService(pathName, serviceName, body, 'POST');
-      }
-      else if (naturalPathName.startsWith === '/geoserver') {
-
-      }
-      */
-
-      else {
-        //Get the requested file.. if it exists...
-        let pathName = fullPath + '/content';
-        getFile(pathName, resource);
-      }
+      //Flak for the spammers...
+      for (let bad of badURLs){
+        if (resource.toLowerCase().indexOf (bad.toLowerCase())!==-1){
+          flak ();
+          return;
+        }
+      }  
+       //Get the requested file.. if it exists...
+      let pathName = fullPath + '/content';
+      getFile(pathName, resource);
     }
   }
   if (msg === 'POST') {
@@ -60,7 +63,6 @@ process.on('message', (message) => {
 });
 
 function runService(pathName, serviceName, body) {
-
   try {
     if (fs.existsSync(pathName + serviceName)) {
       var serviceWorker = child_process.fork(pathName + serviceName);
@@ -117,6 +119,21 @@ function getFile(pathName, fileName) {
     }
   }
   let result = {
+    "data": returnData,
+    "mime": mimeType,
+    "code": returnCode,
+  };
+  let json = JSON.stringify(result);
+  process.send(json);
+}
+function flak(){
+  let mimeType = 'application/octet-stream';
+  let returnData = '';
+  //for (let i=0;i<1000000;i++){
+  //  returnData+=Math.floor ((Math.random()*15)).toString (16);
+  // }
+  let returnCode = "403";
+   let result = {
     "data": returnData,
     "mime": mimeType,
     "code": returnCode,
