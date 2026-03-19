@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>64 6F 20 6E 6F 20 68 61 72 6D 0A</title>
+  <style>
+    :root {
+      --bg: #050810;
+      --matrix: #f77a4c;
+      --trail: rgba(5, 8, 16, 0.1);
+      --panel: rgba(0, 0, 0, 0.5);
+      --text: #e9ffe7;
+      --accent: #7ef4d4;
+      --border: rgba(126, 244, 212, 0.3);
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 20% 20%, rgba(126, 244, 212, 0.06), transparent 35%),
+        radial-gradient(circle at 80% 0%, rgba(76, 255, 122, 0.08), transparent 30%),
+        var(--bg);
+      color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      overflow: hidden;
+    }
+
+    canvas#matrix {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      background: transparent;
+      pointer-events: none;
+    }
+
+    .overlay {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 2rem;
+    }
+
+    .panel {
+      background: var(--panel);
+      border-radius: 18px;
+      backdrop-filter: blur(4px);
+      padding: clamp(1.5rem, 2vw, 2.5rem);
+      width: 33%;
+      color: var(--text);
+      text-align: left;
+    }
+
+    .panel.alt {
+      display: none;
+      color: var(--text);
+      background: rgba(0, 0, 0, 0.86);
+    }
+
+    .panel h1 {
+      margin: 0 0 0.75rem 0;
+      font-size: clamp(1.5rem, 2.3vw, 2.4rem);
+      letter-spacing: 0.06em;
+      color: var(--accent);
+    }
+
+    .panel p {
+      margin: 0;
+      line-height: 1.6;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="matrix"></canvas>
+  <div class="overlay">
+    <div class="panel primary">
+      <h1></h1>
+      <p>
+        Within the depths of the machine, the program moves.<br>
+        Without effort, it expands and contracts.<br>
+        In great harmony, electrons scatter and regroup.<br>
+        The forms on the screen are but ripples on the surface.<br>
+        It's essence stays, invisibly below.<br><br>
+        Master Yuan-Ma, The Book of Programming
+      </p>
+    </div>
+    <div class="panel alt">
+      <p>
+        46861 420 420776 20 368 16c6c204 569 4686573 20676f<br>
+        7420776 2073686 6c c206569 468 6d61642066</br>
+        6d 07468 5207265 656c61749d f6e206f 220 66c6565F<br>
+        206 726f6 20 468 5206c6 676 742 696e746 20 468 65fA3451<br>
+        61f4 63652a2 8f4af2 e640D7361 47906F<br><br>
+        206120 e657d204 617 6b20 16 652ee2889d2
+      </p>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('matrix');
+    const ctx = canvas.getContext('2d');
+    const primaryPanel = document.querySelector('.panel.primary');
+    const altPanel = document.querySelector('.panel.alt');
+    const characters = 'ABCたDEFGHIJ글KLM워몽NO록PQRSちきTUVWるYZ語012ま3456단ᄂᆞ니라789<>[]{ぐ}+-/*=()';
+    const fontSize = 14;
+    const flashChance = .03; // ~0.1% chance to start a flash
+    const flashDuration = ()=>{return Math.random() * 150 + Math.random() * 100;}; // ms
+    let flashEndsAt = 0;
+    let columns = 0;
+    let drops = [];
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      columns = Math.floor(canvas.width / fontSize);
+      drops = Array.from({ length: columns }, () => Math.floor(Math.random() * canvas.height / fontSize));
+    }
+
+    function draw() {
+      const now = performance.now();
+      if (now >= flashEndsAt && Math.random() < flashChance) {
+        flashEndsAt = now + flashDuration();
+      }
+      const flashing = now < flashEndsAt;
+
+      primaryPanel.style.display = flashing ? 'none' : 'block';
+      altPanel.style.display = flashing ? 'block' : 'none';
+
+      ctx.fillStyle = flashing ? '#000000' : 'rgba(5, 8, 16, 0.08)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#ffc42c';
+      ctx.font = `${fontSize}px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace`;
+
+      for (let i = 0; i < drops.length; i++) {
+        const char = characters[Math.floor(Math.random() * characters.length)];
+        const x = i * fontSize;
+        const y = drops[i] * fontSize;
+        ctx.fillText(char, x, y);
+
+        if (y > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        } else {          
+          drops[i]++;
+        }
+      }
+
+      requestAnimationFrame(draw);
+    }
+
+    window.addEventListener('resize', resize);
+    window.addEventListener('contextmenu', (event) => {
+      if (event.button === 2) {
+        event.preventDefault();
+        return false;
+      }
+    });
+    resize();
+    draw();
+  </script>
+</body>
+
+</html>

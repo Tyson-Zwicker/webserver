@@ -1,0 +1,53 @@
+:root {
+  --theme-bg: #f5f7fb;
+  --theme-surface: #ffffff;
+  --theme-text: #0f172a;
+  --theme-muted: #334155;
+  --theme-border: #d6deeb;
+  --theme-accent: #2563eb;
+}
+
+body {
+  margin: 0;
+  background: var(--theme-bg);
+  color: var(--theme-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  line-height: 1.6;
+}
+
+a {
+  color: var(--theme-accent);
+}
+
+button,
+input,
+select,
+textarea {
+  color: var(--theme-text);
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border);
+  padding: 0.45rem 0.75rem;
+  border-radius: 6px;
+}
+
+button:hover,
+input:hover,
+select:hover,
+textarea:hover {
+  border-color: var(--theme-accent);
+}
+
+button:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+}
+
+p,
+div,
+span,
+li {
+  color: var(--theme-text);
+}
