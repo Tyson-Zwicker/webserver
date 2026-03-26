@@ -2,10 +2,15 @@
   "name": "server",
   "version": "0.0.1",
   "description": "Mulitthreaded HTTP server",
-  "main": "HTTPServer.js",
+  "type": "module",
+  "main": "HTTPServer.ts",
   "scripts": {
+    "start": "bun HTTPServer.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Tyson",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^25.5.0"
+  }
 }
