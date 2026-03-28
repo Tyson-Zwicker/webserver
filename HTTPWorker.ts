@@ -1,11 +1,15 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { fork } from 'node:child_process';
 
+type Parameters = Record<string, string>;
 interface ServiceResponse {
   data: unknown;
   returnCode: number;
 }
-
+interface ServiceData {
+  type: 'body' | 'parameters';
+  data: string | Parameters;
+}
 interface OutboundMessage {
   data: unknown;
   mime: string;
@@ -15,13 +19,46 @@ const green = '\x1b[32m%s\x1b[0m';
 const yellow = '\x1b[33m%s\x1b[0m';
 const red = '\x1b[31m%s\x1b[0m';
 const cyan = '\x1b[36m%s\x1b[0m';
+
+function getParameters(uri: string): Parameters {
+  const paramsStart = uri.indexOf('?');
+  if (paramsStart === -1) return {};
+
+  const query = uri.substring(paramsStart + 1);
+  if (!query) return {};
+
+  const decode = (value: string): string => {
+    try {
+      return decodeURIComponent(value.replace(/\+/g, ' ')); //Replace + with space.. 
+    } catch {
+      return value;
+    }
+  };
+
+  return query.split('&').reduce((acc, pair) => {
+    if (!pair) return acc;
+    const [rawKey, rawValue = ''] = pair.split('=', 2);
+    if (!rawKey) return acc;
+    const key = decode(rawKey);
+    const value = decode(rawValue);
+    acc[key] = value;
+    return acc;
+  }, {} as Parameters);
+}
+function stripParameters(uri: string) {
+  if (uri.indexOf('?') === -1) {
+    return uri;
+  } else {
+    return uri.substring(0, uri.indexOf('?'));
+  }
+}
 process.on('message', (message: unknown) => {
   const msg = `${message ?? ''}`;
   if (msg === 'SIGINT') {
     terminate();
   }
 
-  const resource = decodeURIComponent(process.argv[2] ?? '');
+  let resource = decodeURIComponent(process.argv[2] ?? '');
 
   const body = process.argv[3] ?? '';
   const visitorIP = process.argv[4] ?? '';
@@ -30,15 +67,21 @@ process.on('message', (message: unknown) => {
   const now = new Date();
   const stamp = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
 
+
   if (msg === 'GET') {
     if (resource.startsWith('/:')) {
       const pathName = `${basePath}services`;
+
+      let params = getParameters(resource);
+      resource = stripParameters(resource);
+
+      let serviceData = { 'type': 'parameters', 'data': params } as ServiceData;
       const serviceName = resolveServiceName(pathName, resource.substring(2));
       if (serviceName) {
-        runService(pathName, serviceName, '', 'GET', stamp, visitorIP);
-        console.log(cyan, `${stamp} SRV ${visitorIP} POST ${resource.substring(2)}`);
+        runService(pathName, serviceName, serviceData, 'GET', stamp, visitorIP);
+        console.log(cyan, `${stamp} SRV ${visitorIP} GET ${resource}`);
       } else {
-        console.log(red, `${stamp} SRV ${visitorIP} POST ${resource.substring(2)}`);
+        console.log(red, `${stamp} SRV ${visitorIP} GET ${resource}`);
       }
     } else {
       const pathName = `${basePath}content`;
@@ -46,26 +89,37 @@ process.on('message', (message: unknown) => {
     }
   }
 
-  if (msg === 'POST') {
+  else if (msg === 'POST') {
     if (resource.startsWith('/:')) {
       const pathName = `${basePath}services`;
       const serviceName = resolveServiceName(pathName, resource.substring(2));
       if (serviceName) {
-
-        runService(pathName, serviceName, body, 'POST', stamp, visitorIP);
-        console.log(cyan, `${stamp} SRV ${visitorIP} POST ${resource.substring(2)}`);
+        let serviceData = { 'type': 'body', 'data': body } as ServiceData;
+        runService(pathName, serviceName, serviceData, 'POST', stamp, visitorIP);
+        console.log(cyan, `${stamp} SRV ${visitorIP} POST ${resource}`);
       } else {
-        console.log(red, `${stamp} SRV ${visitorIP} POST ${resource.substring(2)}`);
+        console.log(red, `${stamp} SRV ${visitorIP} POST ${resource}`);
       }
     }
+  } else {
+    //We only do POST and GET here, so this is not implemented.
+    console.log(red, `${stamp} ${501} ${visitorIP} ${msg} ${resource}`);
+    const result: OutboundMessage = {
+      data: get501(),
+      mime: 'text/html',
+      code: 501,
+    };
+    const json = JSON.stringify(result);
+    process.send?.(json);
   }
 });
 
-function runService(pathName: string, serviceName: string, body: string, method: string, stamp: string, visitorIP: string): void {
+function runService(pathName: string, serviceName: string, data: ServiceData, method: string, stamp: string, visitorIP: string): void {
   try {
     if (existsSync(pathName + serviceName)) {
       const serviceWorker = fork(pathName + serviceName);
-      if (body !== '') serviceWorker.send?.(`BODY${body}`);
+      serviceWorker.send?.(data);
+
       serviceWorker.send?.('RUN');
       serviceWorker.on('message', (serviceResponse: string) => {
         const sr = JSON.parse(serviceResponse) as ServiceResponse;
@@ -115,13 +169,15 @@ function getFile(pathName: string, fileName: string, method: string, stamp: stri
       fileName = '/347r1x.htm';
       mimeType = 'text/html';
     } else if (fileName.indexOf('ip-api.com') > 0) {
-      throw new Error('501');
+      throw new Error('403');
     } else if (fileName.indexOf('http') > 0) {
-      throw new Error('501');
+      throw new Error('403');
+    } else if (fileName.indexOf('admin') > 0) {
+      throw new Error('403');
     } else if (fileName.indexOf('login') > 0) {
-      throw new Error('501');
+      throw new Error('403');
     } else if (fileName.indexOf('boaform') > 0) {
-      throw new Error('501');
+      throw new Error('403');
     }
     returnData = readFileSync(pathName + fileName).toString();
     console.log(green, `${stamp} 200 ${visitorIP} ${method} ${fileName}`);
@@ -133,9 +189,9 @@ function getFile(pathName: string, fileName: string, method: string, stamp: stri
       returnData = get404();
       returnCode = 404;
       color = yellow;
-    } else if (error.message = '501') {
-      returnData = get501();
-      returnCode = 501;
+    } else if (error.message = '403') {
+      returnData = get403();
+      returnCode = 403;
       mimeType = 'text/html';
     } else {
       returnData = get500('');
@@ -181,7 +237,9 @@ function getMimeType(url: string): string {
 function get404(): string {
   return '<html><head><title>404</title></head><body bgcolor="black"><font size="+2" color="white">404: File Not Found.</font></body></html>';
 }
-
+function get403(): string {
+  return `<html><head><title>403</title></head><body bgcolor="black"><font size="+2" color="white">403: Forbidden</font></body</html>`;
+}
 function get500(msg: string): string {
   return `<html><head><title>500</title></head><body bgcolor="black"><font size="+2" color="white">500: Server Error</font></body</html>`;
 }

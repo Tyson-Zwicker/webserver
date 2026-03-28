@@ -11,9 +11,13 @@ const yellow = '\x1b[33m%s\x1b[0m';
 const red = '\x1b[31m%s\x1b[0m';
 const cyan = '\x1b[36m%s\x1b[0m';
 
-const PORT = 8080;
+let PORT = 2001;
+try {
+  if (typeof process.argv[2] === 'string') PORT = parseInt(process.argv[2]);
+}
+catch { ; }
 
-console.log(green, `Listening on port ${PORT}.`);
+console.log(green, `Listening on port`, cyan, `${PORT}.`);
 const server = createServer(listener);
 server.listen(PORT);
 
@@ -25,24 +29,20 @@ function listener(req: IncomingMessage, res: ServerResponse): void {
 
   const now = new Date();
   const stamp = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
-  if (req.method === 'GET') {
-    invokeWorker(req, res, '', visitorsIP,stamp);
-  } else if (req.method === 'POST') {
+  if (req.method === 'POST') {
     let postBody = '';
     req.on('data', (chunk) => {
       postBody += chunk.toString();
     });
-
-    req.on('end', () => {      
-      invokeWorker(req, res, postBody, visitorsIP,stamp);
+    req.on('end', () => {
+      invokeWorker(req, res, postBody, visitorsIP, stamp);
     });
   } else {
-    console.log(red, `Bad Method [${req.method}]`);
-    res.end();
+    invokeWorker(req, res, '', visitorsIP, stamp);
   }
 }
 
-function invokeWorker(req: IncomingMessage, res: ServerResponse, body: string, visitorIP: string,stamp:string): void {
+function invokeWorker(req: IncomingMessage, res: ServerResponse, body: string, visitorIP: string, stamp: string): void {
   const safeBody = body ?? '';
   const workerVerbosity = '1';
   const workerPath = new URL('./HTTPWorker.ts', import.meta.url).pathname;
