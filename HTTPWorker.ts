@@ -28,9 +28,9 @@ process.on('message', (message: unknown) => {
     } else {
       if (resource === '/console' || resource === '/login') {
         returnFile(`${basePath}auth`, `${resource}.html`, 'GET', stamp, visitorIP);
-      } else if (resource.startsWith('/cgi-bin/luci/')){
+      } else if (resource.startsWith('/cgi-bin/luci/')) {
         log(red, `${stamp} 302 ${visitorIP} ${msg} ${Util.stripParameters(resource)}`);
-        send ({data:'', mime:'text/text', code:302} as WorkerResponse);
+        send({ data: '', mime: 'text/text', code: 302 } as WorkerResponse);
       } else {
         returnFile(`${basePath}content`, Util.stripParameters(resource), msg, stamp, visitorIP);
       }
@@ -70,6 +70,7 @@ function runService(basePath: string, resource: string, data: ServiceData, metho
           log(cyan, `${stamp} 200 ${visitorIP} ${method} ${serviceName.substring(0, serviceName.length)}`);
         } catch (err) {
           log(red, `${stamp} SRV ${visitorIP} ${method} ${serviceWorker.pid}`);
+          process.exit(1);
         }
       });
     } else {
@@ -78,6 +79,7 @@ function runService(basePath: string, resource: string, data: ServiceData, metho
     }
   } catch (err) {
     log(red, `${stamp} 500 ${visitorIP} ${method} ${Util.stripParameters(resource)}`);
+    console.log(1);
     send({ data: get500((err as Error).message), mime: 'text/html', code: 500 });
   }
 }
@@ -94,7 +96,7 @@ function returnFile(pathName: string, fileName: string, method: string, stamp: s
   let returnData = '';
   let returnCode = 200;
   let mimeType = getMimeType(fileName);
-  const safePath = resolveSafePath(pathName, fileName);
+  let safePath = resolveSafePath(pathName, fileName);
   if (safePath === null) {
     log(red, `${stamp} 403 ${visitorIP} ${method} ${fileName}`);
     send({ data: get403(), mime: 'text/html', code: 403 });
@@ -103,8 +105,14 @@ function returnFile(pathName: string, fileName: string, method: string, stamp: s
   try {
     if (fileName === '/' || fileName === '') { //handle empty request with 'welcome screen';
       fileName = '/347r1x.htm';
+      safePath = resolveSafePath(pathName, fileName);      
+      if (safePath === null) {
+        log(red, `${stamp} 403 ${visitorIP} ${method} ${fileName}`);
+        send({ data: get403(), mime: 'text/html', code: 403 });
+        return;
+      }
       mimeType = 'text/html';
-    }
+    }    
     returnData = readFileSync(safePath).toString();
     log(green, `${stamp} 200 ${visitorIP} ${method} ${fileName}`);
   } catch (err) {
