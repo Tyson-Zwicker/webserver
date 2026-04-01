@@ -14,7 +14,7 @@ function stringify(value: unknown): string {
 
 export function log(...args: unknown[]): void {
   console.log(...args);
-  const line = args.map(stringify).join(' ') + '\n';
+  const line = args.slice (1).map(stringify).join(' ') + '\n';
   try {
     appendFileSync(logFile, line);
   } catch {
